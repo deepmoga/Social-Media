@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '../components/layout/Header';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -7,14 +7,40 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { authApi } from '../api/auth';
 import { Avatar } from '../components/ui/Avatar';
+import api from '../api/client';
+
+const API_KEY_FIELDS = [
+  { section: 'Meta / Facebook', keys: [
+    { key: 'META_APP_ID', label: 'App ID' },
+    { key: 'META_APP_SECRET', label: 'App Secret', secret: true },
+    { key: 'META_REDIRECT_URI', label: 'Redirect URI' },
+  ]},
+  { section: 'Cloudflare R2', keys: [
+    { key: 'R2_ACCOUNT_ID', label: 'Account ID' },
+    { key: 'R2_ACCESS_KEY_ID', label: 'Access Key ID' },
+    { key: 'R2_SECRET_ACCESS_KEY', label: 'Secret Access Key', secret: true },
+    { key: 'R2_BUCKET_NAME', label: 'Bucket Name' },
+    { key: 'R2_PUBLIC_URL', label: 'Public URL' },
+  ]},
+  { section: 'OpenAI', keys: [
+    { key: 'OPENAI_API_KEY', label: 'API Key', secret: true },
+  ]},
+];
 
 export default function Settings() {
-  const { user, setAuth, clearAuth } = useAuthStore();
+  const { user, clearAuth } = useAuthStore();
   const { theme, set: setTheme } = useThemeStore();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [apiKeys, setApiKeys] = useState({});
+  const [apiLoading, setApiLoading] = useState(false);
+  const [showSecrets, setShowSecrets] = useState({});
+
+  useEffect(() => {
+    api.get('/settings').then(r => setApiKeys(r.data.settings || {})).catch(() => {});
+  }, []);
 
   const changePassword = async (e) => {
     e.preventDefault();
@@ -29,6 +55,16 @@ export default function Settings() {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to change password');
     } finally { setLoading(false); }
+  };
+
+  const saveApiKeys = async () => {
+    setApiLoading(true);
+    try {
+      await api.put('/settings', { settings: apiKeys });
+      toast.success('Settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save settings');
+    } finally { setApiLoading(false); }
   };
 
   return (
@@ -47,6 +83,45 @@ export default function Settings() {
               <span className="inline-block mt-1 text-xs bg-brand-green-50 text-brand-green px-2 py-0.5 rounded-full capitalize font-medium">{user?.role}</span>
             </div>
           </div>
+        </div>
+
+        {/* API Keys */}
+        <div className="card p-5">
+          <h2 className="text-base font-semibold text-primary-color mb-1">API Keys & Integrations</h2>
+          <p className="text-xs text-muted-color mb-5">Stored encrypted in DB. Loaded into backend on startup.</p>
+          <div className="space-y-6">
+            {API_KEY_FIELDS.map(({ section, keys }) => (
+              <div key={section}>
+                <p className="text-xs font-semibold text-muted-color uppercase tracking-wide mb-3">{section}</p>
+                <div className="space-y-3">
+                  {keys.map(({ key, label, secret }) => (
+                    <div key={key} className="relative">
+                      <Input
+                        label={label}
+                        type={secret && !showSecrets[key] ? 'password' : 'text'}
+                        value={apiKeys[key] || ''}
+                        onChange={e => setApiKeys(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder={secret ? '••••••••' : ''}
+                        iconRight={secret ? (
+                          <button type="button" onClick={() => setShowSecrets(p => ({ ...p, [key]: !p[key] }))} className="w-full h-full flex items-center justify-center">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              {showSecrets[key]
+                                ? <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></>
+                                : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
+                              }
+                            </svg>
+                          </button>
+                        ) : undefined}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <Button variant="primary" loading={apiLoading} onClick={saveApiKeys} className="mt-5">
+            Save API Keys
+          </Button>
         </div>
 
         {/* Appearance */}

@@ -19,6 +19,7 @@ import clientsRoutes from './src/routes/clients.js';
 import metaRoutes from './src/routes/meta.js';
 import mediaRoutes from './src/routes/media.js';
 import postsRoutes from './src/routes/posts.js';
+import settingsRoutes, { loadSettingsToEnv } from './src/routes/settings.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,12 +38,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ── Routes ───────────────────────────────────────────────────────────────────
-app.use('/api/auth',    authRoutes);
-app.use('/api/users',   usersRoutes);
-app.use('/api/clients', clientsRoutes);
-app.use('/api/meta',    metaRoutes);
-app.use('/api/media',   mediaRoutes);
-app.use('/api/posts',   postsRoutes);
+app.use('/api/auth',     authRoutes);
+app.use('/api/users',    usersRoutes);
+app.use('/api/clients',  clientsRoutes);
+app.use('/api/meta',     metaRoutes);
+app.use('/api/media',    mediaRoutes);
+app.use('/api/posts',    postsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
@@ -54,6 +56,7 @@ async function start() {
   try {
     await testConnection();
     await testRedis();
+    await loadSettingsToEnv();
 
     startPublishWorker();
     startDuePostsJob();
