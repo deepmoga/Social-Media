@@ -16,7 +16,7 @@ router.post('/', validate([
   body('clientId').isInt({ min: 1 }),
   body('caption').optional().isString(),
   body('content_type').isIn(['image', 'video', 'carousel', 'story']),
-  body('status').optional().isIn(['draft', 'scheduled']),
+  body('status').optional().isIn(['draft', 'scheduled', 'publishing']),
   body('scheduled_time').optional().isISO8601(),
   body('accountIds').isArray({ min: 1 }),
   body('media').isArray({ min: 1 }),
