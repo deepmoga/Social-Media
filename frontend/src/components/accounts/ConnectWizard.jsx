@@ -34,47 +34,40 @@ export function ConnectWizard({ clientId, isOpen, onClose, onSuccess }) {
       const res = await metaApi.getOAuthUrl(clientId);
       const { url } = res.data;
 
-      // Open popup
-      const popup = window.open(url, 'meta-oauth', 'width=600,height=700,scrollbars=yes');
+      // Derive sessionKey from state param — no cross-window messaging needed
+      const oauthState = new URL(url).searchParams.get('state');
+      const sk = `meta:discovered:${oauthState}-result`;
 
+      const popup = window.open(url, 'meta-oauth', 'width=600,height=700,scrollbars=yes');
       setStep('discovering');
       setLoading(false);
 
-      // Listen for postMessage from the popup
-      const handler = async (e) => {
-        if (e.data?.type !== 'META_OAUTH') return;
-        window.removeEventListener('message', handler);
+      let done = false;
 
-        if (e.data.error) {
-          toast.error(`Connection failed: ${e.data.error}`);
-          setStep('auth');
-          return;
-        }
-
-        const sk = e.data.sessionKey;
+      const fetchPages = async () => {
+        if (done) return;
+        done = true;
+        clearInterval(poll);
         setSessionKey(sk);
-
         try {
           const r = await metaApi.getDiscovered(sk);
           setDiscovered(r.data.discovered);
           setSelected(r.data.discovered.map(d => d.pageId));
           setStep('select');
         } catch (err) {
-          toast.error('Failed to fetch page list');
+          const msg = err.response?.data?.message || 'Connection failed';
+          toast.error(msg);
           setStep('auth');
         }
       };
 
-      window.addEventListener('message', handler);
-
-      // Cleanup if popup closed manually
       const poll = setInterval(() => {
         if (popup?.closed) {
           clearInterval(poll);
-          window.removeEventListener('message', handler);
-          if (step === 'discovering') setStep('auth');
+          fetchPages();
         }
-      }, 1000);
+      }, 500);
+
     } catch (err) {
       toast.error('Failed to start OAuth flow');
       setStep('auth');

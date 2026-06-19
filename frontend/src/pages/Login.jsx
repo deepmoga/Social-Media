@@ -22,11 +22,14 @@ export default function Login() {
     try {
       const res = await authApi.login(email, password);
       const { user, accessToken, refreshToken } = res.data;
-      // Fetch clients
-      const meRes = await (await import('../api/client')).default.get('/auth/me');
+      // Store token FIRST so axios interceptor can attach it to /auth/me
+      setAuth({ user, accessToken, refreshToken, clients: [] });
+      const { default: api } = await import('../api/client');
+      const meRes = await api.get('/auth/me');
       setAuth({ user, accessToken, refreshToken, clients: meRes.data.clients });
       navigate('/');
     } catch (err) {
+      useAuthStore.getState().clearAuth();
       toast.error(err.response?.data?.message || 'Invalid email or password');
     } finally {
       setLoading(false);

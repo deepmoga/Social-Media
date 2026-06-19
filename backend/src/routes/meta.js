@@ -177,8 +177,13 @@ router.get('/rate-limit/:accountId', authenticate, async (req, res, next) => {
 });
 
 function popupClose(data) {
+  const payload = JSON.stringify({ type: 'META_OAUTH', ...data });
+  // Use localStorage so parent can poll — avoids cross-origin opener issues
+  const safePayload = payload.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   return `<!DOCTYPE html><html><body><script>
-    window.opener && window.opener.postMessage(${JSON.stringify({ type: 'META_OAUTH', ...data })}, '*');
+    try { localStorage.setItem('meta_oauth_result', '${safePayload}'); } catch(e) {}
+    try { new BroadcastChannel('meta-oauth').postMessage(${payload}); } catch(e) {}
+    try { window.opener && window.opener.postMessage(${payload}, '*'); } catch(e) {}
     window.close();
   </script></body></html>`;
 }
