@@ -1,6 +1,8 @@
 import { query, queryOne } from '../config/database.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 
+const toDate = (v) => (v ? new Date(v) : null);
+
 export const SocialAccountModel = {
   findById: (id) => queryOne('SELECT * FROM social_accounts WHERE id = ?', [id]),
 
@@ -21,11 +23,12 @@ export const SocialAccountModel = {
       `INSERT INTO social_accounts
        (client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, access_token_encrypted, token_expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), token_expires_at]
+      [client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), toDate(token_expires_at)]
     ),
 
   // Insert or update existing account for same client+platform+page
   upsert: async ({ client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, access_token, token_expires_at }) => {
+    const expires = toDate(token_expires_at);
     const existing = await queryOne(
       'SELECT id FROM social_accounts WHERE client_id = ? AND platform = ? AND page_id = ?',
       [client_id, platform, page_id]
@@ -34,7 +37,7 @@ export const SocialAccountModel = {
       await query(
         `UPDATE social_accounts SET ig_business_id=?, account_name=?, username=?, profile_pic_url=?,
          access_token_encrypted=?, token_expires_at=?, status='active', last_refreshed_at=NOW() WHERE id=?`,
-        [ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), token_expires_at, existing.id]
+        [ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), expires, existing.id]
       );
       return { insertId: null, id: existing.id };
     }
@@ -42,14 +45,14 @@ export const SocialAccountModel = {
       `INSERT INTO social_accounts
        (client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, access_token_encrypted, token_expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), token_expires_at]
+      [client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), expires]
     );
   },
 
   updateToken: (id, access_token, token_expires_at) =>
     query(
       'UPDATE social_accounts SET access_token_encrypted = ?, token_expires_at = ?, last_refreshed_at = NOW(), status = ? WHERE id = ?',
-      [encrypt(access_token), token_expires_at, 'active', id]
+      [encrypt(access_token), toDate(token_expires_at), 'active', id]
     ),
 
   updateStatus: (id, status) =>
