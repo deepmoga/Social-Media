@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 
-import { testConnection } from './src/config/database.js';
+import { testConnection, query } from './src/config/database.js';
 import { testConnection as testRedis } from './src/config/redis.js';
 import { errorHandler, notFound } from './src/middleware/errorHandler.js';
 import { startPublishWorker } from './src/workers/publishWorker.js';
@@ -27,6 +27,34 @@ import { R2Service } from './src/services/r2Service.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+async function runMigrations() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS reel_triggers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      client_id INT NOT NULL,
+      social_account_id INT NOT NULL,
+      media_id VARCHAR(255) NULL,
+      media_url VARCHAR(500) NULL,
+      media_thumbnail VARCHAR(500) NULL,
+      keyword VARCHAR(255) NULL,
+      trigger_type ENUM('comment','dm') DEFAULT 'comment',
+      match_any TINYINT(1) DEFAULT 0,
+      reply_every TINYINT(1) DEFAULT 0,
+      ignore_own TINYINT(1) DEFAULT 1,
+      confirm_text TEXT NULL,
+      confirm_button VARCHAR(20) NULL,
+      link_text TEXT NOT NULL,
+      link_url VARCHAR(500) NULL,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+      FOREIGN KEY (social_account_id) REFERENCES social_accounts(id) ON DELETE CASCADE
+    )
+  `);
+  logger.info('Migrations: reel_triggers table ready');
+}
 
 // ── Security & Middleware ────────────────────────────────────────────────────
 app.use(helmet({
@@ -64,6 +92,7 @@ async function start() {
     await testConnection();
     await testRedis();
     await loadSettingsToEnv();
+    await runMigrations();
 
     // Configure R2 CORS so browser can upload directly via presigned URLs
     if (process.env.R2_ACCOUNT_ID) {
