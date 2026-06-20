@@ -236,12 +236,18 @@ export default function Compose() {
   };
 
   const generateCaption = async () => {
-    const uploaded = media.find(m => !m.uploading && m.url && m.mediaType === 'image');
-    if (!uploaded) { toast.error('Pehle ek image upload karo'); return; }
+    const uploaded = media.find(m => !m.uploading && m.url);
+    if (!uploaded) { toast.error('Pehle media upload karo'); return; }
     setAiLoading(true);
     try {
       const clientName = clients.find(c => String(c.id) === String(clientId))?.name || '';
-      const res = await api.post('/ai/caption', { imageUrl: uploaded.url, contentType, clientName });
+      const isVideo = uploaded.mediaType === 'video';
+      const res = await api.post('/ai/caption', {
+        imageUrl: isVideo ? null : uploaded.url,
+        mediaType: uploaded.mediaType,
+        contentType,
+        clientName,
+      });
       setCaption(res.data.caption.slice(0, MAX_CAPTION));
       toast.success('Caption generated!');
     } catch (err) {
@@ -421,8 +427,8 @@ export default function Compose() {
               <button
                 type="button"
                 onClick={generateCaption}
-                disabled={aiLoading || !media.find(m => !m.uploading && m.url && m.mediaType === 'image')}
-                title={media.find(m => !m.uploading && m.url && m.mediaType === 'image') ? 'AI se caption generate karo' : 'Pehle image upload karo'}
+                disabled={aiLoading || !media.find(m => !m.uploading && m.url)}
+                title={media.find(m => !m.uploading && m.url) ? 'AI se caption generate karo' : 'Pehle media upload karo'}
                 className={clsx(
                   'absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
                   aiLoading
