@@ -28,7 +28,7 @@ router.get('/', authenticate, requireAdmin, async (req, res, next) => {
     );
     const settings = {};
     for (const key of ALLOWED_KEYS) settings[key] = '';
-    for (const row of rows) settings[row.key] = row.value || '';
+    for (const row of rows) settings[row.key.toUpperCase()] = row.value || '';
     res.json({ success: true, settings });
   } catch (err) { next(err); }
 });
