@@ -142,6 +142,7 @@ export default function Compose() {
   const [media, setMedia] = useState([]);
   const [scheduleMode, setScheduleMode] = useState('now'); // 'now' | 'schedule' | 'draft'
   const [scheduledTime, setScheduledTime] = useState('');
+  const [alsoStory, setAlsoStory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [previewPlatform, setPreviewPlatform] = useState('instagram');
 
@@ -230,25 +231,27 @@ export default function Compose() {
 
     setLoading(true);
     try {
-      const payload = {
-        clientId: parseInt(clientId),
-        caption,
-        content_type: contentType,
-        status: mode === 'draft' ? 'draft' : mode === 'schedule' ? 'scheduled' : 'publishing',
-        scheduled_time: mode === 'schedule' ? new Date(scheduledTime).toISOString() : undefined,
-        accountIds: selectedAccountIds,
-        media: media.map(m => ({
-          url: m.url,
-          r2Key: m.r2Key,
-          mediaType: m.mediaType,
-          mimeType: m.mimeType,
-          fileSize: m.fileSize,
-        })),
-      };
+      const status = mode === 'draft' ? 'draft' : mode === 'schedule' ? 'scheduled' : 'publishing';
+      const scheduled_time = mode === 'schedule' ? new Date(scheduledTime).toISOString() : undefined;
+      const mediaPayload = media.map(m => ({ url: m.url, r2Key: m.r2Key, mediaType: m.mediaType, mimeType: m.mimeType, fileSize: m.fileSize }));
 
-      const res = await postsApi.create(payload);
-      const msg = mode === 'draft' ? 'Draft saved' : mode === 'schedule' ? 'Post scheduled!' : 'Publishing…';
-      toast.success(msg);
+      const res = await postsApi.create({
+        clientId: parseInt(clientId), caption, content_type: contentType,
+        status, scheduled_time, accountIds: selectedAccountIds, media: mediaPayload,
+      });
+
+      // Also post as Story if toggled
+      if (alsoStory && contentType !== 'story') {
+        await postsApi.create({
+          clientId: parseInt(clientId), caption: '',
+          content_type: 'story', status, scheduled_time,
+          accountIds: selectedAccountIds, media: mediaPayload,
+        });
+        toast.success(mode === 'draft' ? 'Draft + Story draft saved' : mode === 'schedule' ? 'Post + Story scheduled!' : 'Publishing post + Story…');
+      } else {
+        toast.success(mode === 'draft' ? 'Draft saved' : mode === 'schedule' ? 'Post scheduled!' : 'Publishing…');
+      }
+
       navigate(`/posts/${res.data.postId}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create post');
@@ -424,6 +427,27 @@ export default function Compose() {
                 min={new Date().toISOString().slice(0, 16)}
                 className="w-full bg-surface border border-color rounded-lg px-3 py-2 text-sm text-primary-color focus:outline-none focus:ring-2 focus:ring-brand-green"
               />
+            )}
+
+            {contentType !== 'story' && (
+              <label className="flex items-center gap-3 mt-4 cursor-pointer select-none">
+                <div
+                  onClick={() => setAlsoStory(v => !v)}
+                  className={clsx(
+                    'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
+                    alsoStory ? 'bg-brand-green' : 'bg-surface-tertiary border border-color'
+                  )}
+                >
+                  <div className={clsx(
+                    'absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform',
+                    alsoStory ? 'translate-x-5' : 'translate-x-0.5'
+                  )} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-primary-color">Also post as Story</p>
+                  <p className="text-xs text-muted-color">FB + Instagram pe story bhi automatically post hogi</p>
+                </div>
+              </label>
             )}
           </div>
 
