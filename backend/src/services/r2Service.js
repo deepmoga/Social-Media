@@ -29,6 +29,9 @@ export const R2Service = {
   },
 
   async upload(key, buffer, mimetype) {
+    if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
+      throw new Error('Cloudflare R2 not configured. Please add R2 credentials in Settings → API Keys.');
+    }
     const client = getS3Client();
     await client.send(new PutObjectCommand({
       Bucket: R2_BUCKET(),

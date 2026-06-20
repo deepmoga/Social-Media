@@ -191,7 +191,8 @@ export default function Compose() {
             : m
         ));
       } catch (err) {
-        toast.error(`Upload failed: ${item.file.name}`);
+        const msg = err.response?.data?.message || err.message || 'Upload failed';
+        toast.error(`${item.file.name}: ${msg}`);
         setMedia(prev => prev.filter(m => m.id !== item.id));
       }
     }
