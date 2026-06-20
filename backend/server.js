@@ -21,6 +21,7 @@ import mediaRoutes from './src/routes/media.js';
 import postsRoutes from './src/routes/posts.js';
 import settingsRoutes, { loadSettingsToEnv } from './src/routes/settings.js';
 import insightsRoutes from './src/routes/insights.js';
+import aiRoutes from './src/routes/ai.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -47,6 +48,7 @@ app.use('/api/media',    mediaRoutes);
 app.use('/api/posts',    postsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/insights', insightsRoutes);
+app.use('/api/ai',       aiRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

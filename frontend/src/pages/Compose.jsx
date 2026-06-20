@@ -15,6 +15,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { postsApi } from '../api/posts';
 import { mediaApi } from '../api/media';
 import { clientsApi } from '../api/clients';
+import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useClientStore } from '../store/clientStore';
 
@@ -144,6 +145,7 @@ export default function Compose() {
   const [scheduledTime, setScheduledTime] = useState('');
   const [alsoStory, setAlsoStory] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [previewPlatform, setPreviewPlatform] = useState('instagram');
 
   const selectedType = CONTENT_TYPES.find(t => t.value === contentType);
@@ -220,6 +222,20 @@ export default function Compose() {
     setSelectedAccountIds(prev =>
       prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
     );
+  };
+
+  const generateCaption = async () => {
+    const uploaded = media.find(m => !m.uploading && m.url && m.mediaType === 'image');
+    if (!uploaded) { toast.error('Pehle ek image upload karo'); return; }
+    setAiLoading(true);
+    try {
+      const clientName = clients.find(c => String(c.id) === String(clientId))?.name || '';
+      const res = await api.post('/ai/caption', { imageUrl: uploaded.url, contentType, clientName });
+      setCaption(res.data.caption.slice(0, MAX_CAPTION));
+      toast.success('Caption generated!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'AI caption generate nahi hui');
+    } finally { setAiLoading(false); }
   };
 
   const handleSubmit = async (mode) => {
@@ -384,12 +400,37 @@ export default function Compose() {
                 {caption.length} / {MAX_CAPTION}
               </span>
             </div>
-            <Textarea
-              placeholder="Write your caption here…"
-              rows={6}
-              value={caption}
-              onChange={e => setCaption(e.target.value.slice(0, MAX_CAPTION))}
-            />
+            <div className="relative">
+              <Textarea
+                placeholder="Write your caption here…"
+                rows={6}
+                value={caption}
+                onChange={e => setCaption(e.target.value.slice(0, MAX_CAPTION))}
+              />
+              <button
+                type="button"
+                onClick={generateCaption}
+                disabled={aiLoading || !media.find(m => !m.uploading && m.url && m.mediaType === 'image')}
+                title={media.find(m => !m.uploading && m.url && m.mediaType === 'image') ? 'AI se caption generate karo' : 'Pehle image upload karo'}
+                className={clsx(
+                  'absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
+                  aiLoading
+                    ? 'bg-surface-tertiary text-muted-color cursor-wait'
+                    : media.find(m => !m.uploading && m.url && m.mediaType === 'image')
+                      ? 'bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 shadow-sm'
+                      : 'bg-surface-tertiary text-muted-color cursor-not-allowed opacity-50'
+                )}
+              >
+                {aiLoading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                )}
+                {aiLoading ? 'Generating…' : 'AI Caption'}
+              </button>
+            </div>
             {contentType === 'story' && (
               <p className="text-xs text-muted-color mt-2">Note: Captions are not supported on Stories (Instagram limitation)</p>
             )}
