@@ -121,8 +121,12 @@ router.post('/connect', authenticate, requireAdmin, async (req, res, next) => {
     const connected = [];
 
     for (const page of selected) {
+      if (!page.pageToken) {
+        throw ApiError.badRequest(`No access token for page "${page.pageName}". Please reconnect and grant all requested permissions.`);
+      }
+
       // Save Facebook Page account
-      const fbResult = await SocialAccountModel.create({
+      const fbResult = await SocialAccountModel.upsert({
         client_id: clientId,
         platform: 'facebook',
         page_id: page.pageId,
@@ -133,22 +137,23 @@ router.post('/connect', authenticate, requireAdmin, async (req, res, next) => {
         access_token: page.pageToken,
         token_expires_at: page.pageTokenExpiry,
       });
-      connected.push({ platform: 'facebook', name: page.pageName, id: fbResult.insertId });
+      connected.push({ platform: 'facebook', name: page.pageName, id: fbResult.insertId || fbResult.id });
 
       // If page has linked IG account, save it separately
       if (page.igAccount) {
-        const igResult = await SocialAccountModel.create({
+        const igAccName = page.igAccount.name || page.igAccount.username || page.pageName;
+        const igResult = await SocialAccountModel.upsert({
           client_id: clientId,
           platform: 'instagram',
           page_id: page.igAccount.id,
           ig_business_id: page.igAccount.id,
-          account_name: page.igAccount.name || page.igAccount.username,
+          account_name: igAccName,
           username: page.igAccount.username,
           profile_pic_url: page.igAccount.profilePicUrl,
-          access_token: page.pageToken, // IG uses the FB page token
+          access_token: page.pageToken,
           token_expires_at: page.pageTokenExpiry,
         });
-        connected.push({ platform: 'instagram', name: page.igAccount.username, id: igResult.insertId });
+        connected.push({ platform: 'instagram', name: page.igAccount.username || igAccName, id: igResult.insertId || igResult.id });
       }
     }
 

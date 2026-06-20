@@ -26,7 +26,7 @@ router.get('/:clientId', async (req, res, next) => {
     const results = [];
 
     for (const account of filtered) {
-      const token = account.access_token;
+      const token = await SocialAccountModel.getToken(account.id);
 
       try {
         if (account.platform === 'facebook') {

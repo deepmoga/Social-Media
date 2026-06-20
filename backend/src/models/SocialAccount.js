@@ -24,6 +24,28 @@ export const SocialAccountModel = {
       [client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), token_expires_at]
     ),
 
+  // Insert or update existing account for same client+platform+page
+  upsert: async ({ client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, access_token, token_expires_at }) => {
+    const existing = await queryOne(
+      'SELECT id FROM social_accounts WHERE client_id = ? AND platform = ? AND page_id = ?',
+      [client_id, platform, page_id]
+    );
+    if (existing) {
+      await query(
+        `UPDATE social_accounts SET ig_business_id=?, account_name=?, username=?, profile_pic_url=?,
+         access_token_encrypted=?, token_expires_at=?, status='active', last_refreshed_at=NOW() WHERE id=?`,
+        [ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), token_expires_at, existing.id]
+      );
+      return { insertId: null, id: existing.id };
+    }
+    return query(
+      `INSERT INTO social_accounts
+       (client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, access_token_encrypted, token_expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [client_id, platform, page_id, ig_business_id, account_name, username, profile_pic_url, encrypt(access_token), token_expires_at]
+    );
+  },
+
   updateToken: (id, access_token, token_expires_at) =>
     query(
       'UPDATE social_accounts SET access_token_encrypted = ?, token_expires_at = ?, last_refreshed_at = NOW(), status = ? WHERE id = ?',
