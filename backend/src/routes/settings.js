@@ -96,12 +96,11 @@ router.post('/fix-nginx', (req, res) => {
   const cmd = `
     CONF=$(grep -rl "posting.officialaiagent.in" /etc/nginx/ 2>/dev/null | head -1) &&
     echo "Found: $CONF" &&
-    if grep -q "client_max_body_size" "$CONF"; then
-      sed -i 's/client_max_body_size .*/client_max_body_size 500M;/g' "$CONF"
-    else
-      sed -i '/server_name/a\\    client_max_body_size 500M;' "$CONF"
-    fi &&
-    nginx -t && nginx -s reload && echo "nginx reloaded"
+    grep -q 'client_max_body_size' "$CONF" && sed -i 's/client_max_body_size .*/client_max_body_size 500M;/' "$CONF" || sed -i '/location \\/api\\//a\\        client_max_body_size 500M;' "$CONF" ;
+    grep -q 'client_body_timeout' "$CONF" || sed -i '/client_max_body_size/a\\        client_body_timeout 300s;' "$CONF" ;
+    grep -q 'proxy_request_buffering' "$CONF" || sed -i '/client_body_timeout/a\\        proxy_request_buffering off;' "$CONF" ;
+    grep -q 'proxy_send_timeout' "$CONF" || sed -i '/proxy_read_timeout/a\\        proxy_send_timeout 300s;' "$CONF" ;
+    nginx -t && nginx -s reload && echo "nginx reloaded successfully"
   `;
   exec(cmd, (err, stdout, stderr) => {
     console.log('[fix-nginx]', stdout, stderr, err?.message);
