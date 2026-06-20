@@ -17,12 +17,12 @@ export function errorHandler(err, req, res, next) {
 
   logger.error('Unhandled error', {
     error: err.message,
-    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+    stack: err.stack,
     path: req.path,
     method: req.method,
   });
 
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 }
 
 export function notFound(req, res) {
