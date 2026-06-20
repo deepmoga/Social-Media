@@ -22,6 +22,7 @@ import postsRoutes from './src/routes/posts.js';
 import settingsRoutes, { loadSettingsToEnv } from './src/routes/settings.js';
 import insightsRoutes from './src/routes/insights.js';
 import aiRoutes from './src/routes/ai.js';
+import automationRoutes from './src/routes/automation.js';
 import { R2Service } from './src/services/r2Service.js';
 
 const app = express();
@@ -49,7 +50,8 @@ app.use('/api/media',    mediaRoutes);
 app.use('/api/posts',    postsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/insights', insightsRoutes);
-app.use('/api/ai',       aiRoutes);
+app.use('/api/ai',         aiRoutes);
+app.use('/api/automation', automationRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
