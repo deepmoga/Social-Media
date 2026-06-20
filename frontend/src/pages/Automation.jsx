@@ -645,7 +645,7 @@ export default function Automation() {
     try {
       const [tRes, aRes] = await Promise.all([
         automationApi.getTriggers(clientId),
-        api.get(`/clients/${clientId}/accounts`),
+        api.get(`/clients/${clientId}`),
       ]);
       setTriggers(tRes.data.triggers || []);
       setAccounts(aRes.data.accounts || []);
