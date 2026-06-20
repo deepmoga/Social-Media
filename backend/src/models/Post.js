@@ -1,5 +1,8 @@
 import { query, queryOne, transaction } from '../config/database.js';
 
+const toMysqlDatetime = (isoStr) =>
+  isoStr ? new Date(isoStr).toISOString().slice(0, 19).replace('T', ' ') : null;
+
 export const PostModel = {
   findById: (id) =>
     queryOne(
@@ -33,10 +36,11 @@ export const PostModel = {
   create: ({ client_id, caption, content_type, status, scheduled_time, timezone, created_by }) =>
     query(
       'INSERT INTO posts (client_id, caption, content_type, status, scheduled_time, timezone, created_by) VALUES (?,?,?,?,?,?,?)',
-      [client_id, caption, content_type, status || 'draft', scheduled_time || null, timezone || 'Asia/Kolkata', created_by]
+      [client_id, caption, content_type, status || 'draft', toMysqlDatetime(scheduled_time), timezone || 'Asia/Kolkata', created_by]
     ),
 
   update: (id, fields) => {
+    if (fields.scheduled_time !== undefined) fields.scheduled_time = toMysqlDatetime(fields.scheduled_time);
     const sets = Object.keys(fields).map(k => `\`${k}\` = ?`).join(', ');
     return query(`UPDATE posts SET ${sets} WHERE id = ?`, [...Object.values(fields), id]);
   },
