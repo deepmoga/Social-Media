@@ -61,6 +61,12 @@ export const SocialAccountModel = {
   disconnect: (id) =>
     query("UPDATE social_accounts SET status = 'disconnected' WHERE id = ?", [id]),
 
+  findActivePlatformsByClients: (ids, placeholders) =>
+    query(
+      `SELECT client_id, platform FROM social_accounts WHERE status = 'active' AND client_id IN (${placeholders})`,
+      ids
+    ),
+
   findExpiringSoon: (daysAhead = 7) =>
     query(
       `SELECT * FROM social_accounts

@@ -16,7 +16,24 @@ router.get('/', async (req, res, next) => {
     const clients = req.user.role === 'admin'
       ? await ClientModel.findAll()
       : await (await import('../models/User.js')).UserModel.getClientAccess(req.user.id);
-    res.json({ success: true, clients });
+
+    if (!clients.length) return res.json({ success: true, clients: [] });
+
+    // Attach connected platform list to each client
+    const ids = clients.map(c => c.id);
+    const placeholders = ids.map(() => '?').join(',');
+    const platformRows = await SocialAccountModel.findActivePlatformsByClients(ids, placeholders);
+
+    const platformMap = {};
+    for (const row of platformRows) {
+      if (!platformMap[row.client_id]) platformMap[row.client_id] = [];
+      if (!platformMap[row.client_id].includes(row.platform)) {
+        platformMap[row.client_id].push(row.platform);
+      }
+    }
+
+    const enriched = clients.map(c => ({ ...c, platforms: platformMap[c.id] || [] }));
+    res.json({ success: true, clients: enriched });
   } catch (err) { next(err); }
 });
 
