@@ -60,6 +60,18 @@ router.post('/upload', authenticate, upload.single('file'), async (req, res, nex
   }
 });
 
+router.post('/presign', authenticate, async (req, res, next) => {
+  try {
+    const { clientId, filename, mimetype, size } = req.body;
+    if (!clientId || !filename || !mimetype || !size) throw ApiError.badRequest('clientId, filename, mimetype, size required');
+    R2Service.validateFile(mimetype, parseInt(size));
+    const key = R2Service.generateKey(clientId, filename);
+    const uploadUrl = await R2Service.getUploadUrl(key, mimetype, 600);
+    const publicUrl = R2Service.publicUrl(key);
+    res.json({ success: true, uploadUrl, key, publicUrl });
+  } catch (err) { next(err); }
+});
+
 router.delete('/delete', authenticate, async (req, res, next) => {
   try {
     const { r2Key } = req.body;

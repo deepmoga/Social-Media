@@ -22,6 +22,7 @@ import postsRoutes from './src/routes/posts.js';
 import settingsRoutes, { loadSettingsToEnv } from './src/routes/settings.js';
 import insightsRoutes from './src/routes/insights.js';
 import aiRoutes from './src/routes/ai.js';
+import { R2Service } from './src/services/r2Service.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -61,6 +62,12 @@ async function start() {
     await testConnection();
     await testRedis();
     await loadSettingsToEnv();
+
+    // Configure R2 CORS so browser can upload directly via presigned URLs
+    if (process.env.R2_ACCOUNT_ID) {
+      R2Service.configureCors(process.env.FRONTEND_URL || 'https://posting.officialaiagent.in')
+        .catch(e => logger.warn('R2 CORS config skipped', { error: e.message }));
+    }
 
     startPublishWorker();
     startDuePostsJob();

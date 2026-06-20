@@ -1,4 +1,4 @@
-import { PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, PutBucketCorsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getS3Client, R2_BUCKET, R2_PUBLIC_URL } from '../config/r2.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -71,10 +71,25 @@ export const R2Service = {
     return `${R2_PUBLIC_URL()}/${key}`;
   },
 
-  // Generate presigned upload URL for direct-to-R2 browser uploads (optional path)
   async getUploadUrl(key, mimetype, expiresIn = 300) {
     const client = getS3Client();
     const command = new PutObjectCommand({ Bucket: R2_BUCKET(), Key: key, ContentType: mimetype });
     return getSignedUrl(client, command, { expiresIn });
+  },
+
+  async configureCors(origin) {
+    const client = getS3Client();
+    await client.send(new PutBucketCorsCommand({
+      Bucket: R2_BUCKET(),
+      CORSConfiguration: {
+        CORSRules: [{
+          AllowedHeaders: ['*'],
+          AllowedMethods: ['PUT', 'GET', 'HEAD'],
+          AllowedOrigins: [origin, 'https://posting.officialaiagent.in'],
+          ExposeHeaders: ['ETag'],
+          MaxAgeSeconds: 86400,
+        }],
+      },
+    }));
   },
 };
