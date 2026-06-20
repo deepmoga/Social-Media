@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { exec } from 'child_process';
 import { getPool } from '../config/database.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { ApiError } from '../utils/apiError.js';
@@ -66,5 +67,13 @@ export async function loadSettingsToEnv() {
     console.warn('[settings] Could not load settings from DB:', err.message);
   }
 }
+
+const DEPLOY_SECRET = 'odm-ghook-2026-secure';
+router.post('/deploy-hook', (req, res) => {
+  const secret = req.headers['x-deploy-secret'] || req.query.secret;
+  if (secret !== DEPLOY_SECRET) { res.status(401).json({ error: 'unauthorized' }); return; }
+  res.json({ ok: true });
+  exec('bash /var/www/odm-scheduler/deploy.sh >> /var/log/odm-deploy.log 2>&1');
+});
 
 export default router;
