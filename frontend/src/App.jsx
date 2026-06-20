@@ -12,6 +12,7 @@ import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
 import Team from './pages/Team';
 import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { accessToken, user } = useAuthStore();
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/team" element={
             <ProtectedRoute adminOnly><Team /></ProtectedRoute>
           } />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 
