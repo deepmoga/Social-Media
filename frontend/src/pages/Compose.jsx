@@ -47,8 +47,11 @@ function SortableMedia({ item, onRemove }) {
         <img src={item.previewUrl || item.url} alt="" className="w-full h-full object-cover" />
       )}
       {item.uploading && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1">
           <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          {item.progress > 0 && (
+            <span className="text-white text-xs font-semibold">{item.progress}%</span>
+          )}
         </div>
       )}
       <button
@@ -175,6 +178,7 @@ export default function Compose() {
       previewUrl: URL.createObjectURL(file),
       mediaType: file.type.startsWith('video/') ? 'video' : 'image',
       uploading: true,
+      progress: 0,
       url: null,
       r2Key: null,
     }));
@@ -183,11 +187,16 @@ export default function Compose() {
 
     for (const item of previews) {
       try {
-        const res = await mediaApi.upload(item.file, clientId);
+        const res = await mediaApi.upload(item.file, clientId, (e) => {
+          if (e.total) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setMedia(prev => prev.map(m => m.id === item.id ? { ...m, progress: pct } : m));
+          }
+        });
         const { media: uploaded } = res.data;
         setMedia(prev => prev.map(m =>
           m.id === item.id
-            ? { ...m, url: uploaded.url, r2Key: uploaded.r2Key, mimeType: uploaded.mimeType, fileSize: uploaded.fileSize, uploading: false }
+            ? { ...m, url: uploaded.url, r2Key: uploaded.r2Key, mimeType: uploaded.mimeType, fileSize: uploaded.fileSize, uploading: false, progress: 100 }
             : m
         ));
       } catch (err) {
