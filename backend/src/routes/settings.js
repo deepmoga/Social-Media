@@ -73,7 +73,20 @@ router.post('/deploy-hook', (req, res) => {
   const secret = req.headers['x-deploy-secret'] || req.query.secret;
   if (secret !== DEPLOY_SECRET) { res.status(401).json({ error: 'unauthorized' }); return; }
   res.json({ ok: true });
-  exec('bash /var/www/odm-scheduler/deploy.sh >> /var/log/odm-deploy.log 2>&1');
+  const deployCmd = [
+    'bash /var/www/odm-scheduler/deploy.sh',
+    // Fix nginx upload limit after every deploy
+    'CONF=$(grep -rl "posting.officialaiagent.in" /etc/nginx/ 2>/dev/null | head -1)',
+    'if [ -n "$CONF" ]; then',
+    '  if grep -q "client_max_body_size" "$CONF"; then',
+    '    sed -i "s/client_max_body_size .*/client_max_body_size 500M;/" "$CONF"',
+    '  else',
+    '    sed -i "/server_name/a\\\\    client_max_body_size 500M;" "$CONF"',
+    '  fi',
+    '  nginx -t && nginx -s reload',
+    'fi',
+  ].join(' && ');
+  exec(`(${deployCmd}) >> /var/log/odm-deploy.log 2>&1`);
 });
 
 // One-time nginx fix endpoint (admin only)
