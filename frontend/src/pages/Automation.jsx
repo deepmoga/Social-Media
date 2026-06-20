@@ -633,7 +633,7 @@ function TriggerCard({ trigger, onDelete, onToggle }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function Automation() {
-  const { clientId } = useClientStore();
+  const { activeClientId: clientId } = useClientStore();
   const [triggers, setTriggers] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
