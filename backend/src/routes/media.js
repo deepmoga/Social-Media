@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { authenticate } from '../middleware/auth.js';
 import { R2Service } from '../services/r2Service.js';
 import { ApiError } from '../utils/apiError.js';
@@ -7,8 +10,15 @@ import logger from '../utils/logger.js';
 
 const router = Router();
 
+// Use disk storage to avoid OOM crashes on large video uploads
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: os.tmpdir(),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `odm-upload-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
   limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter(req, file, cb) {
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime'];
@@ -17,6 +27,7 @@ const upload = multer({
 });
 
 router.post('/upload', authenticate, upload.single('file'), async (req, res, next) => {
+  const tmpPath = req.file?.path;
   try {
     if (!req.file) throw ApiError.badRequest('No file uploaded or file type not supported');
     const { clientId } = req.body;
@@ -24,7 +35,10 @@ router.post('/upload', authenticate, upload.single('file'), async (req, res, nex
 
     R2Service.validateFile(req.file.mimetype, req.file.size);
     const key = R2Service.generateKey(clientId, req.file.originalname);
-    const publicUrl = await R2Service.upload(key, req.file.buffer, req.file.mimetype);
+
+    // Stream from disk to R2 — no RAM spike for large videos
+    const fileStream = fs.createReadStream(tmpPath);
+    const publicUrl = await R2Service.uploadStream(key, fileStream, req.file.mimetype, req.file.size);
 
     const mediaType = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
 
@@ -39,7 +53,11 @@ router.post('/upload', authenticate, upload.single('file'), async (req, res, nex
         originalName: req.file.originalname,
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  } finally {
+    if (tmpPath) fs.unlink(tmpPath, () => {});
+  }
 });
 
 router.delete('/delete', authenticate, async (req, res, next) => {

@@ -44,6 +44,23 @@ export const R2Service = {
     return publicUrl;
   },
 
+  async uploadStream(key, stream, mimetype, size) {
+    if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
+      throw new Error('Cloudflare R2 not configured. Please add R2 credentials in Settings → API Keys.');
+    }
+    const client = getS3Client();
+    await client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET(),
+      Key: key,
+      Body: stream,
+      ContentType: mimetype,
+      ContentLength: size,
+    }));
+    const publicUrl = `${R2_PUBLIC_URL()}/${key}`;
+    logger.info('R2: uploaded (stream)', { key, size });
+    return publicUrl;
+  },
+
   async delete(key) {
     const client = getS3Client();
     await client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET(), Key: key }));
