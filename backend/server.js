@@ -29,29 +29,33 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 async function runMigrations() {
-  await query(`
-    CREATE TABLE IF NOT EXISTS reel_triggers (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      client_id INT NOT NULL,
-      social_account_id INT NOT NULL,
-      media_id VARCHAR(255) NULL,
-      media_url VARCHAR(500) NULL,
-      media_thumbnail VARCHAR(500) NULL,
-      keyword VARCHAR(255) NULL,
-      trigger_type ENUM('comment','dm') DEFAULT 'comment',
-      match_any TINYINT(1) DEFAULT 0,
-      reply_every TINYINT(1) DEFAULT 0,
-      ignore_own TINYINT(1) DEFAULT 1,
-      confirm_text TEXT NULL,
-      confirm_button VARCHAR(20) NULL,
-      link_text TEXT NOT NULL,
-      link_url VARCHAR(500) NULL,
-      is_active TINYINT(1) DEFAULT 1,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
-  logger.info('Migrations: reel_triggers table ready');
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reel_triggers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        client_id INT NOT NULL,
+        social_account_id INT NOT NULL,
+        media_id VARCHAR(255) NULL,
+        media_url VARCHAR(500) NULL,
+        media_thumbnail VARCHAR(500) NULL,
+        keyword VARCHAR(255) NULL,
+        trigger_type VARCHAR(20) DEFAULT 'comment',
+        match_any TINYINT(1) DEFAULT 0,
+        reply_every TINYINT(1) DEFAULT 0,
+        ignore_own TINYINT(1) DEFAULT 1,
+        confirm_text TEXT NULL,
+        confirm_button VARCHAR(20) NULL,
+        link_text TEXT NOT NULL,
+        link_url VARCHAR(500) NULL,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    logger.info('Migrations: reel_triggers table ready');
+  } catch (err) {
+    logger.warn('Migrations: reel_triggers skipped', { error: err.message });
+  }
 }
 
 // ── Security & Middleware ────────────────────────────────────────────────────
