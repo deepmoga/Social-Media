@@ -50,10 +50,10 @@ export const PostModel = {
   getMedia: (postId) =>
     query('SELECT * FROM post_media WHERE post_id = ? ORDER BY order_index ASC', [postId]),
 
-  addMedia: ({ post_id, media_url, media_type, order_index, r2_key, file_size, mime_type, width, height, duration_s }) =>
+  addMedia: ({ post_id, media_url, media_type, order_index, r2_key, file_size, mime_type, width, height, duration_s, cover_url }) =>
     query(
-      'INSERT INTO post_media (post_id, media_url, media_type, order_index, r2_key, file_size, mime_type, width, height, duration_s) VALUES (?,?,?,?,?,?,?,?,?,?)',
-      [post_id, media_url, media_type, order_index, r2_key, file_size, mime_type, width, height, duration_s]
+      'INSERT INTO post_media (post_id, media_url, media_type, order_index, r2_key, file_size, mime_type, width, height, duration_s, cover_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [post_id, media_url, media_type, order_index, r2_key, file_size, mime_type, width, height, duration_s, cover_url || null]
     ),
 
   clearMedia: (postId) => query('DELETE FROM post_media WHERE post_id = ?', [postId]),

@@ -24,8 +24,19 @@ Rules:
 - Just return the caption text, nothing else`;
 
     let messages;
-    if (mediaType === 'video' || !imageUrl) {
-      // Text-only generation for videos
+    if (mediaType === 'video' && imageUrl) {
+      // Vision-based generation using video cover/thumbnail image
+      messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageUrl, detail: 'low' } },
+            { type: 'text', text: 'This is the cover image of a video/reel. Analyze it and write an engaging social media caption for the video post.' },
+          ],
+        },
+      ];
+    } else if (mediaType === 'video' || !imageUrl) {
       messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Write an engaging caption for a ${contentType === 'reel' ? 'Reel/video' : 'video'} post for ${clientName || 'this business'}.` },

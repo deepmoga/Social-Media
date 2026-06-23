@@ -145,6 +145,8 @@ export default function Compose() {
   const [contentType, setContentType] = useState('image');
   const [caption, setCaption] = useState('');
   const [media, setMedia] = useState([]);
+  const [coverImage, setCoverImage] = useState(null);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [scheduleMode, setScheduleMode] = useState('now'); // 'now' | 'schedule' | 'draft'
   const [scheduledTime, setScheduledTime] = useState('');
   const [alsoStory, setAlsoStory] = useState(false);
@@ -218,6 +220,18 @@ export default function Compose() {
     setMedia(prev => prev.filter(m => m.id !== id));
   };
 
+  const handleCoverUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    setCoverUploading(true);
+    try {
+      const res = await mediaApi.upload(file, clientId);
+      setCoverImage({ url: res.data.media.url, r2Key: res.data.media.r2Key, previewUrl: URL.createObjectURL(file) });
+    } catch {
+      toast.error('Cover image upload failed');
+    } finally { setCoverUploading(false); }
+  };
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
@@ -243,7 +257,7 @@ export default function Compose() {
       const clientName = clients.find(c => String(c.id) === String(clientId))?.name || '';
       const isVideo = uploaded.mediaType === 'video';
       const res = await api.post('/ai/caption', {
-        imageUrl: isVideo ? null : uploaded.url,
+        imageUrl: isVideo ? (coverImage?.url || null) : uploaded.url,
         mediaType: uploaded.mediaType,
         contentType,
         clientName,
@@ -266,7 +280,7 @@ export default function Compose() {
     try {
       const status = mode === 'draft' ? 'draft' : mode === 'schedule' ? 'scheduled' : 'publishing';
       const scheduled_time = mode === 'schedule' ? new Date(scheduledTime).toISOString() : undefined;
-      const mediaPayload = media.map(m => ({ url: m.url, r2Key: m.r2Key, mediaType: m.mediaType, mimeType: m.mimeType, fileSize: m.fileSize }));
+      const mediaPayload = media.map(m => ({ url: m.url, r2Key: m.r2Key, mediaType: m.mediaType, mimeType: m.mimeType, fileSize: m.fileSize, coverUrl: m.mediaType === 'video' ? coverImage?.url : undefined }));
 
       const res = await postsApi.create({
         clientId: parseInt(clientId), caption, content_type: contentType,
@@ -355,7 +369,7 @@ export default function Compose() {
               {CONTENT_TYPES.map(type => (
                 <button
                   key={type.value}
-                  onClick={() => { setContentType(type.value); setMedia([]); }}
+                  onClick={() => { setContentType(type.value); setMedia([]); setCoverImage(null); }}
                   className={clsx(
                     'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm transition-all',
                     contentType === type.value
@@ -406,6 +420,40 @@ export default function Compose() {
                   </div>
                 </SortableContext>
               </DndContext>
+            )}
+
+            {/* Cover Image for Video */}
+            {contentType === 'video' && media.some(m => m.mediaType === 'video' && !m.uploading) && (
+              <div className="mt-4 pt-4 border-t border-color">
+                <h4 className="text-xs font-semibold text-primary-color mb-2">Cover Image (Thumbnail)</h4>
+                {coverImage ? (
+                  <div className="flex items-center gap-3">
+                    <img src={coverImage.previewUrl || coverImage.url} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-color">Cover image set</p>
+                      <p className="text-xs text-green-600">AI Caption will analyze this image</p>
+                    </div>
+                    <button onClick={() => setCoverImage(null)} className="p-1.5 rounded-lg text-muted-color hover:text-red-600 hover:bg-red-50">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  </div>
+                ) : (
+                  <label className={clsx(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed cursor-pointer transition-all',
+                    coverUploading ? 'border-blue-300 bg-blue-50' : 'border-color hover:border-brand-green'
+                  )}>
+                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" disabled={coverUploading} />
+                    {coverUploading ? (
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-4 h-4 text-muted-color" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    )}
+                    <span className="text-xs text-muted-color">{coverUploading ? 'Uploading…' : 'Upload cover image for reel'}</span>
+                  </label>
+                )}
+              </div>
             )}
           </div>
 

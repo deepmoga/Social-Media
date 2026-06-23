@@ -56,6 +56,12 @@ async function runMigrations() {
   } catch (err) {
     logger.warn('Migrations: reel_triggers skipped', { error: err.message });
   }
+  try {
+    await query('ALTER TABLE post_media ADD COLUMN cover_url VARCHAR(500) NULL');
+    logger.info('Migrations: cover_url column added');
+  } catch {
+    // column already exists
+  }
 }
 
 // ── Security & Middleware ────────────────────────────────────────────────────

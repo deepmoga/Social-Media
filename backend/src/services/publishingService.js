@@ -59,6 +59,7 @@ async function publishToInstagram(account, token, post, media) {
     const isReel = post.content_type === 'video' && !isStory;
     const container = await MetaService.createIgVideoContainer(igId, token, {
       videoUrl: media[0].media_url, caption: post.caption, isReel, isStory,
+      coverUrl: media[0].cover_url || undefined,
     });
     // Poll until processing is done
     await MetaService.pollContainerStatus(container.id, token);

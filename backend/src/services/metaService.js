@@ -145,16 +145,18 @@ export const MetaService = {
     });
   },
 
-  async createIgVideoContainer(igAccountId, token, { videoUrl, caption, isReel = false, isStory = false }) {
+  async createIgVideoContainer(igAccountId, token, { videoUrl, caption, isReel = false, isStory = false, coverUrl }) {
     let media_type = 'VIDEO';
     if (isReel) media_type = 'REELS';
     if (isStory) media_type = 'STORIES';
-    return post(`/${igAccountId}/media`, null, {
+    const params = {
       video_url: videoUrl,
       caption: isStory ? undefined : caption,
       media_type,
       access_token: token,
-    });
+    };
+    if (coverUrl) params.cover_url = coverUrl;
+    return post(`/${igAccountId}/media`, null, params);
   },
 
   async pollContainerStatus(containerId, token, maxAttempts = 20, intervalMs = 5000) {

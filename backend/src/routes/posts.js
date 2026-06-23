@@ -53,6 +53,7 @@ router.post('/', validate([
         width: m.width || null,
         height: m.height || null,
         duration_s: m.duration || null,
+        cover_url: m.coverUrl || null,
       });
     }
 
