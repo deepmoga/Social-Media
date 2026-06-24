@@ -14,6 +14,7 @@ import Team from './pages/Team';
 import Settings from './pages/Settings';
 import Analytics from './pages/Analytics';
 import Automation from './pages/Automation';
+import DailyWork from './pages/DailyWork';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { accessToken, user } = useAuthStore();
@@ -51,6 +52,7 @@ export default function App() {
           } />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/automation" element={<Automation />} />
+          <Route path="/daily-work" element={<DailyWork />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 

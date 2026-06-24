@@ -23,6 +23,7 @@ import settingsRoutes, { loadSettingsToEnv } from './src/routes/settings.js';
 import insightsRoutes from './src/routes/insights.js';
 import aiRoutes from './src/routes/ai.js';
 import automationRoutes from './src/routes/automation.js';
+import dailyWorkRoutes from './src/routes/dailyWork.js';
 import { R2Service } from './src/services/r2Service.js';
 
 const app = express();
@@ -62,6 +63,24 @@ async function runMigrations() {
   } catch {
     // column already exists
   }
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS daily_work (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        work_date DATE NOT NULL,
+        client_id INT NOT NULL,
+        done TINYINT(1) DEFAULT 0,
+        comment TEXT NULL,
+        updated_by INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_date_client (work_date, client_id)
+      )
+    `);
+    logger.info('Migrations: daily_work table ready');
+  } catch (err) {
+    logger.warn('Migrations: daily_work skipped', { error: err.message });
+  }
   // Fix token expiry: page tokens are non-expiring, clear any wrongly set expiry dates
   try {
     const fixed = await query(
@@ -96,6 +115,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/ai',         aiRoutes);
 app.use('/api/automation', automationRoutes);
+app.use('/api/daily-work', dailyWorkRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
