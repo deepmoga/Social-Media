@@ -131,6 +131,7 @@ function DeleteClientModal({ client, isOpen, onClose, onDeleted }) {
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editClient, setEditClient] = useState(null);
@@ -166,6 +167,22 @@ export default function Clients() {
       />
 
       <div className="flex-1 overflow-y-auto p-6">
+        {/* Search */}
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-color" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search clients..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-color bg-surface text-sm text-primary-color placeholder-muted-color focus:outline-none focus:border-brand-green transition-colors"
+            />
+          </div>
+        </div>
+
         <div className="card overflow-hidden">
           {loading ? (
             <div className="p-6"><TableSkeleton /></div>
@@ -187,7 +204,7 @@ export default function Clients() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {clients.map(client => (
+                {clients.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.industry || '').toLowerCase().includes(search.toLowerCase())).map(client => (
                   <tr key={client.id} className="hover:bg-surface-secondary transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
