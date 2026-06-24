@@ -62,6 +62,14 @@ async function runMigrations() {
   } catch {
     // column already exists
   }
+  // Fix token expiry: page tokens are non-expiring, clear any wrongly set expiry dates
+  try {
+    const fixed = await query(
+      `UPDATE social_accounts SET token_expires_at = NULL, status = 'active'
+       WHERE token_expires_at IS NOT NULL OR status = 'token_expired'`
+    );
+    if (fixed.affectedRows) logger.info(`Migrations: fixed ${fixed.affectedRows} account token expiry dates`);
+  } catch {}
 }
 
 // ── Security & Middleware ────────────────────────────────────────────────────

@@ -65,7 +65,7 @@ router.get('/callback', async (req, res) => {
           pageName: page.name,
           pagePicture: page.picture?.data?.url || null,
           pageToken,
-          pageTokenExpiry: expiresAt,
+          pageTokenExpiry: null, // page tokens from long-lived user tokens are non-expiring
           igAccount: igAccount ? {
             id: igAccount.id,
             name: igAccount.name,
