@@ -29,6 +29,15 @@ async function post(path, data = {}, params = {}) {
 }
 
 export const MetaService = {
+  async validateToken(token) {
+    try {
+      const res = await get('/me', { access_token: token, fields: 'id,name' });
+      return { valid: true, name: res.name };
+    } catch (err) {
+      return { valid: false, error: err.message };
+    }
+  },
+
   // ── OAuth ───────────────────────────────────────────────────────────────────
 
   getOAuthUrl(state) {

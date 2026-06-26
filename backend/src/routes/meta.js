@@ -193,4 +193,18 @@ function popupClose(data) {
   </script></body></html>`;
 }
 
+// ── Token health check ────────────────────────────────────────────────────
+router.get('/token-check/:accountId', authenticate, async (req, res, next) => {
+  try {
+    const account = await SocialAccountModel.findById(req.params.accountId);
+    if (!account) throw ApiError.notFound('Account not found');
+    const token = await SocialAccountModel.getToken(account.id);
+    const result = await MetaService.validateToken(token);
+    if (!result.valid) {
+      await SocialAccountModel.updateStatus(account.id, 'token_expired');
+    }
+    res.json({ success: true, ...result });
+  } catch (err) { next(err); }
+});
+
 export default router;

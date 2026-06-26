@@ -109,6 +109,13 @@ export const PublishingService = {
         const account = await SocialAccountModel.findById(pp.social_account_id);
         const token = await SocialAccountModel.getToken(pp.social_account_id);
 
+        // Pre-check token validity before attempting publish
+        const tokenCheck = await MetaService.validateToken(token);
+        if (!tokenCheck.valid) {
+          await SocialAccountModel.updateStatus(pp.social_account_id, 'token_expired');
+          throw new Error(`Token expired for ${account.account_name}. Please reconnect the account. (${tokenCheck.error})`);
+        }
+
         let result;
         if (account.platform === 'facebook') {
           result = await publishToFacebook(account, token, post, media);
