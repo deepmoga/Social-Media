@@ -14,6 +14,7 @@ const API_KEY_FIELDS = [
     { key: 'META_APP_ID', label: 'App ID' },
     { key: 'META_APP_SECRET', label: 'App Secret', secret: true },
     { key: 'META_REDIRECT_URI', label: 'Redirect URI' },
+    { key: 'META_PERMANENT_TOKEN', label: 'Permanent Token (Never-Expiring)', secret: true, hint: 'Long-lived page access token. Used directly for posting without OAuth flow.' },
   ]},
   { section: 'Cloudflare R2', keys: [
     { key: 'R2_ACCOUNT_ID', label: 'Account ID' },
@@ -94,7 +95,7 @@ export default function Settings() {
               <div key={section}>
                 <p className="text-xs font-semibold text-muted-color uppercase tracking-wide mb-3">{section}</p>
                 <div className="space-y-3">
-                  {keys.map(({ key, label, secret }) => (
+                  {keys.map(({ key, label, secret, hint }) => (
                     <div key={key} className="relative">
                       <Input
                         label={label}
@@ -102,6 +103,7 @@ export default function Settings() {
                         value={apiKeys[key] || ''}
                         onChange={e => setApiKeys(prev => ({ ...prev, [key]: e.target.value }))}
                         placeholder={secret ? '••••••••' : ''}
+                        hint={hint}
                         iconRight={secret ? (
                           <button type="button" onClick={() => setShowSecrets(p => ({ ...p, [key]: !p[key] }))} className="w-full h-full flex items-center justify-center">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
