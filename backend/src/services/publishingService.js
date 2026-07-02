@@ -8,6 +8,33 @@ const MAX_RETRIES = 3;
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// ── Token resolution ──────────────────────────────────────────────────────────
+// Priority: 1) Permanent token from Settings (META_PERMANENT_TOKEN)
+//           2) Per-account stored token (OAuth flow)
+// This lets admins paste a never-expiring page token once in Settings and
+// never worry about reconnecting accounts again.
+async function resolveToken(accountId) {
+  const permanentToken = process.env.META_PERMANENT_TOKEN;
+  if (permanentToken && permanentToken.trim().length > 20) {
+    return permanentToken.trim();
+  }
+  return SocialAccountModel.getToken(accountId);
+}
+
+// ── Error classification ──────────────────────────────────────────────────────
+// Meta error 190 can mean token expired OR missing permissions.
+// Distinguish so we show the right message.
+function classifyMetaError(errMsg) {
+  if (!errMsg) return 'unknown';
+  if (errMsg.includes('permission') || errMsg.includes('impersonating')) {
+    return 'permissions';
+  }
+  if (errMsg.includes('190') || errMsg.includes('expired') || errMsg.includes('invalid')) {
+    return 'token_expired';
+  }
+  return 'other';
+}
+
 async function logAttempt(postPlatformId, attempt, status, response, errorMessage, durationMs) {
   await query(
     'INSERT INTO publish_logs (post_platform_id, attempt_number, status, response_body, error_message, duration_ms) VALUES (?, ?, ?, ?, ?, ?)',
@@ -97,6 +124,11 @@ export const PublishingService = {
       return;
     }
 
+    const usingPermanentToken = !!(process.env.META_PERMANENT_TOKEN?.trim().length > 20);
+    if (usingPermanentToken) {
+      logger.info(`Post ${postId}: using META_PERMANENT_TOKEN for publishing`);
+    }
+
     await PostModel.update(postId, { status: 'publishing' });
     let allOk = true;
     let anyOk = false;
@@ -107,13 +139,24 @@ export const PublishingService = {
 
       try {
         const account = await SocialAccountModel.findById(pp.social_account_id);
-        const token = await SocialAccountModel.getToken(pp.social_account_id);
+        const token = await resolveToken(pp.social_account_id);
 
-        // Pre-check token validity before attempting publish
-        const tokenCheck = await MetaService.validateToken(token);
-        if (!tokenCheck.valid) {
-          await SocialAccountModel.updateStatus(pp.social_account_id, 'token_expired');
-          throw new Error(`Token expired for ${account.account_name}. Please reconnect the account. (${tokenCheck.error})`);
+        // Only validate token if NOT using the global permanent token
+        // (permanent token is assumed valid by admin — skip the extra API call)
+        if (!usingPermanentToken) {
+          const tokenCheck = await MetaService.validateToken(token);
+          if (!tokenCheck.valid) {
+            const errType = classifyMetaError(tokenCheck.error);
+            if (errType === 'permissions') {
+              // Permissions issue — don't mark as token_expired, just log
+              throw new Error(
+                `Permission error for "${account.account_name}": The Facebook app lacks required page permissions. ` +
+                `Please check your Meta App settings or use a Permanent Token in Settings. (${tokenCheck.error})`
+              );
+            }
+            await SocialAccountModel.updateStatus(pp.social_account_id, 'token_expired');
+            throw new Error(`Token expired for ${account.account_name}. Please reconnect the account or set a Permanent Token in Settings. (${tokenCheck.error})`);
+          }
         }
 
         let result;
@@ -122,6 +165,9 @@ export const PublishingService = {
         } else {
           result = await publishToInstagram(account, token, post, media);
         }
+
+        // Mark account active on successful publish
+        await SocialAccountModel.updateStatus(pp.social_account_id, 'active');
 
         await PostModel.updatePlatformStatus(pp.id, {
           publish_status: 'published',
