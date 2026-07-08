@@ -24,6 +24,8 @@ import insightsRoutes from './src/routes/insights.js';
 import aiRoutes from './src/routes/ai.js';
 import automationRoutes from './src/routes/automation.js';
 import dailyWorkRoutes from './src/routes/dailyWork.js';
+import tiktokRoutes from './src/routes/tiktok.js';
+import googleRoutes from './src/routes/google.js';
 import { R2Service } from './src/services/r2Service.js';
 
 const app = express();
@@ -89,6 +91,15 @@ async function runMigrations() {
     );
     if (fixed.affectedRows) logger.info(`Migrations: fixed ${fixed.affectedRows} account token expiry dates`);
   } catch {}
+
+  // Extend platform ENUM to include tiktok and google_gmb
+  try {
+    await query(`ALTER TABLE social_accounts
+      MODIFY platform ENUM('facebook','instagram','tiktok','google_gmb') NOT NULL`);
+    logger.info('Migrations: social_accounts platform ENUM updated');
+  } catch {
+    // already updated or unsupported — skip
+  }
 }
 
 // ── Security & Middleware ────────────────────────────────────────────────────
@@ -105,17 +116,19 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ── Routes ───────────────────────────────────────────────────────────────────
-app.use('/api/auth',     authRoutes);
-app.use('/api/users',    usersRoutes);
-app.use('/api/clients',  clientsRoutes);
-app.use('/api/meta',     metaRoutes);
-app.use('/api/media',    mediaRoutes);
-app.use('/api/posts',    postsRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/insights', insightsRoutes);
-app.use('/api/ai',         aiRoutes);
-app.use('/api/automation', automationRoutes);
-app.use('/api/daily-work', dailyWorkRoutes);
+app.use('/api/auth',      authRoutes);
+app.use('/api/users',     usersRoutes);
+app.use('/api/clients',   clientsRoutes);
+app.use('/api/meta',      metaRoutes);
+app.use('/api/media',     mediaRoutes);
+app.use('/api/posts',     postsRoutes);
+app.use('/api/settings',  settingsRoutes);
+app.use('/api/insights',  insightsRoutes);
+app.use('/api/ai',        aiRoutes);
+app.use('/api/automation',automationRoutes);
+app.use('/api/daily-work',dailyWorkRoutes);
+app.use('/api/tiktok',    tiktokRoutes);
+app.use('/api/google',    googleRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

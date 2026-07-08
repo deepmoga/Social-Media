@@ -16,6 +16,16 @@ const API_KEY_FIELDS = [
     { key: 'META_REDIRECT_URI', label: 'Redirect URI' },
     { key: 'META_PERMANENT_TOKEN', label: 'Permanent Token (Never-Expiring)', secret: true, hint: 'Long-lived page access token. Used directly for posting without OAuth flow.' },
   ]},
+  { section: 'TikTok', keys: [
+    { key: 'TIKTOK_CLIENT_KEY', label: 'Client Key' },
+    { key: 'TIKTOK_CLIENT_SECRET', label: 'Client Secret', secret: true },
+    { key: 'TIKTOK_REDIRECT_URI', label: 'Redirect URI', hint: 'Set to: https://posting.officialaiagent.in/api/tiktok/callback' },
+  ]},
+  { section: 'Google Business Profile', keys: [
+    { key: 'GOOGLE_CLIENT_ID', label: 'Client ID' },
+    { key: 'GOOGLE_CLIENT_SECRET', label: 'Client Secret', secret: true },
+    { key: 'GOOGLE_REDIRECT_URI', label: 'Redirect URI', hint: 'Set to: https://posting.officialaiagent.in/api/google/callback' },
+  ]},
   { section: 'Cloudflare R2', keys: [
     { key: 'R2_ACCOUNT_ID', label: 'Account ID' },
     { key: 'R2_ACCESS_KEY_ID', label: 'Access Key ID' },

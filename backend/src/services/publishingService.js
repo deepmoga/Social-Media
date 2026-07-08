@@ -1,6 +1,9 @@
 import { PostModel } from '../models/Post.js';
 import { SocialAccountModel } from '../models/SocialAccount.js';
 import { MetaService } from './metaService.js';
+import { TikTokService } from './tiktokService.js';
+import { GmbService } from './gmbService.js';
+import { decrypt } from '../utils/encryption.js';
 import { query } from '../config/database.js';
 import logger from '../utils/logger.js';
 
@@ -111,6 +114,37 @@ async function publishToInstagram(account, token, post, media) {
   throw new Error(`Unsupported content type for Instagram: ${post.content_type}`);
 }
 
+async function publishToTikTok(account, token, post, media) {
+  // TikTok only supports video
+  const videoMedia = media.find(m => m.media_type === 'video');
+  if (!videoMedia) throw new Error('TikTok only supports video content. Please select a video post.');
+
+  const result = await TikTokService.initVideoUpload(token, {
+    openId:    account.page_id,
+    videoUrl:  videoMedia.media_url,
+    caption:   post.caption,
+  });
+
+  if (!result?.publish_id) throw new Error('TikTok did not return a publish_id');
+
+  // Poll until published
+  const status = await TikTokService.pollPublishStatus(token, result.publish_id);
+  return { id: result.publish_id, ...status };
+}
+
+async function publishToGmb(account, token, post, media) {
+  // GMB supports text + optional image
+  const imageMedia = media.find(m => m.media_type === 'image');
+  const locationName = account.page_id; // stored as GMB locationName
+
+  const result = await GmbService.createPost(token, locationName, {
+    summary:  post.caption,
+    imageUrl: imageMedia?.media_url || null,
+  });
+
+  return { id: result.name, ...result };
+}
+
 export const PublishingService = {
   async publishPost(postId) {
     const post = await PostModel.findById(postId);
@@ -162,8 +196,31 @@ export const PublishingService = {
         let result;
         if (account.platform === 'facebook') {
           result = await publishToFacebook(account, token, post, media);
-        } else {
+        } else if (account.platform === 'instagram') {
           result = await publishToInstagram(account, token, post, media);
+        } else if (account.platform === 'tiktok') {
+          result = await publishToTikTok(account, token, post, media);
+        } else if (account.platform === 'google_gmb') {
+          // Google tokens expire in 1h — refresh if needed
+          const now = Date.now();
+          const expiresAt = account.token_expires_at ? new Date(account.token_expires_at).getTime() : 0;
+          let activeToken = token;
+          if (expiresAt && expiresAt - now < 5 * 60 * 1000) {
+            try {
+              const refreshToken = account.ig_business_id ? decrypt(account.ig_business_id) : null;
+              if (refreshToken) {
+                const refreshed = await GmbService.refreshAccessToken(refreshToken);
+                activeToken = refreshed.access_token;
+                const newExpiry = new Date(Date.now() + (refreshed.expires_in || 3600) * 1000);
+                await SocialAccountModel.updateToken(pp.social_account_id, activeToken, newExpiry);
+              }
+            } catch (e) {
+              logger.warn(`Could not refresh Google token for account ${pp.social_account_id}`, { error: e.message });
+            }
+          }
+          result = await publishToGmb(account, activeToken, post, media);
+        } else {
+          throw new Error(`Unknown platform: ${account.platform}`);
         }
 
         // Mark account active on successful publish
